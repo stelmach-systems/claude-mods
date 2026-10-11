@@ -1,0 +1,7 @@
+{
+  "name": "kanon-agenci",
+  "version": "0.1.1",
+  "author": { "name": "Stelmach Systems" },
+  "description": "Panel „co robią agenci”: subagenci sesji ze statusem, REALNYM modelem każdego żądania (turn.step), tokenami i liczbą narzędzi; rozjazd tagu [S5.5] w opisie z modelem; licznik spawnów widzianych przez mod obok progu hooka kanon-agent-limit. /agenci [tekst|zamknij].",
+  "types": "./types/index.d.ts"
+}

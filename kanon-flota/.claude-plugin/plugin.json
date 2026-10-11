@@ -1,0 +1,7 @@
+{
+  "name": "kanon-flota",
+  "version": "0.1.0",
+  "author": { "name": "Stelmach Systems" },
+  "description": "Pane „flota sesji”: wszystkie żywe sesje Claude Code na tym Macu z `claude agents --json` (stan z czasem, projekt, nazwa), ctx %, koszt i liczniki wiadomości między sesjami dla sesji z modem ($.store), ping do wybranej sesji. /flota. Zero modelu, zero sieci, zero treści w store.",
+  "types": "./types/index.d.ts"
+}
