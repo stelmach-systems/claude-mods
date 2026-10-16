@@ -1,0 +1,6 @@
+{
+  "name": "kanon-na-biegu",
+  "version": "0.1.0",
+  "author": { "name": "Stelmach Systems" },
+  "description": "Sekcja „⚡ Na biegu” w pasku bocznym desktopu: sesja, w której zaczyna się tura (nowa albo wznowiona), sama się do niej wkłada; po 24 h bezczynności wraca do sekcji, z której przyszła. /na-biegu. Zero modelu, zero sieci, zero treści w store."
+}

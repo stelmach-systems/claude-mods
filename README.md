@@ -23,11 +23,13 @@ w nim zabiera mody sesjom. Nie usuwaj `~/Developer/claude-mods`: worktree stabil
 4. Nowy mod w każdej sesji: ścieżka `~/Developer/claude-mods-stabilne/<mod>` w `env.CLAUDE_CODE_PLUGIN_DIRS` (`~/.claude/settings.json`,
    z backupem i planem rollbacku; działa od nowej sesji). Eksperyment nigdy nie trafia do env.
 
-## Mody (wszystkie w env od 2026-10-11)
+## Mody (pierwsze trzy w env od 2026-10-11)
 
 - `kanon-agenci/` (v0.1.1) — panel `/agenci`: subagenci sesji z realnym modelem każdego żądania, tokenami, `⚠ tag≠model`.
 - `kanon-pasek-budzetu/` (v0.2) — pasek nad promptem: kontekst / okno auto-kompaktacji, limity konta 5h/7d, koszt; log zużycia JSONL.
 - `kanon-flota/` (v0.1) — pane `/flota`: wszystkie żywe sesje na Macu z `claude agents --json`, stan z czasem, ctx/koszt/liczniki
   wiadomości między sesjami, ping.
+- `kanon-na-biegu/` (v0.1, `dev`, jeszcze nie w env) — sekcja „⚡ Na biegu” w pasku bocznym desktopu: sesja z turą sama się do niej
+  wkłada, po dobie bezczynności wraca do grupy pochodzenia; `/na-biegu`. Jedyny mod z `tool.check` (zgoda tylko na własne `move_sessions`).
 
 Bramki wspólne: zero `$.model`, zero `$.http`; dane modów bez treści rozmów. Szczegóły i odstępstwa — README każdego modu.
