@@ -1,0 +1,7 @@
+{
+  "name": "kanon-sztafeta",
+  "version": "0.1.0",
+  "author": { "name": "Stelmach Systems" },
+  "description": "Przekazanie pałeczki do nowej sesji: pasek nad promptem po kompaktacji, po 8 h albo przy kontekście ≥ WARN (formuła hooka kanon-budzet); /sztafeta pokazuje ostatnią sekcję „## Stan” pliku ~/.claude/kanon/stan/<sid>.md i brief dla nowej sesji; /sztafeta skrot zapisuje <sid>-skrot.md ≤ 8 KB; przycisk „Przekaż do nowej sesji” woła ccd_session.start_session (zapas: prompt + schowek). Zero modelu, zero sieci.",
+  "types": "./types/index.d.ts"
+}
