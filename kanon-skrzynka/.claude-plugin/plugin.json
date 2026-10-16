@@ -1,0 +1,7 @@
+{
+  "name": "kanon-skrzynka",
+  "version": "0.1.0",
+  "author": { "name": "Stelmach Systems" },
+  "description": "Skrzynka nieprzeczytanych raportów i stanów: na starcie sesji (i co 10 min) liczy raporty WATCH (≤ 14 dni, werdykt), USAGE (≤ 14 dni, koszt i udział 2 dni, 🔴 > 40 %) i pliki stanu innych sesji (≤ 7 dni, tylko nagłówek sekcji „## Stan”) spod ~/.claude/kanon/; jedna linia nad promptem, /skrzynka z przyciskami Wczytaj (prompt.fill) i Przeczytane ($.store). Polecenie „wczytaj <ścieżka>” liczy się jako przeczytane (D6). Zero modelu, zero sieci, zero zapisu plików.",
+  "types": "./types/index.d.ts"
+}
