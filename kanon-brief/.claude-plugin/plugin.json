@@ -1,0 +1,7 @@
+{
+  "name": "kanon-brief",
+  "version": "0.1.0",
+  "author": { "name": "Stelmach Systems" },
+  "description": "Formularz ram polecenia na start (/brief): repo/folder, stawka, tryb, „gotowe, gdy”, recall, granice → składa polecenie po polsku i wkłada je do pola promptu (Enter naciska właściciel). Toast raz w turze 1 przy poleceniu < 200 znaków; prompt.submit tylko obserwuje. Pamięć ram per folder w $.store; /brief wyczysc kasuje.",
+  "types": "./types/index.d.ts"
+}
