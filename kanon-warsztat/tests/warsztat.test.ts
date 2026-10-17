@@ -5,7 +5,7 @@
 // Odmowy nounów dno oddaje przez `{ deny }`, jak silnik (rzucający hook dna silnik pomija).
 import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
-import type { McpToolResult, On, ProcessRunResult } from 'claude-code'
+import type { On, ProcessRunResult } from 'claude-code'
 
 import { BAZY, LIMIT_WYNIKU, TIMEOUT_MS, TSC_JS, TYPY, WERSJA_INDEKSU, argvDozwolone, jsdoc, ocen, porownajWersje, przytnij, rozwin, sygnatura, szukaj, wBazie, zbudujIndeks } from '../hooks/register'
 import type { Indeks, Warsztat, Wpis } from '../types'
@@ -309,10 +309,8 @@ const ARGV_OK = [
   [DESK, 'plugin', 'test', '.'],
   [NODE, TSC, '--noEmit', '-p', '.'],
 ]
-const tekst = (r: { result?: unknown }) => {
-  const m = r.result as McpToolResult
-  return { text: m.content[0]?.text ?? '', isError: m.isError }
-}
+/** Odpowiedź hooka: `{ result: tekst }` (string — silnik waliduje `result` wg schematu narzędzia) albo `{ deny: tekst }` = błąd narzędzia dla modelu. */
+const tekst = (r: { result?: unknown; deny?: string }) => ({ text: r.deny ?? (typeof r.result === 'string' ? r.result : `NIE-STRING: ${JSON.stringify(r.result)}`), isError: r.deny !== undefined })
 /** `$.tool.call` na narzędziu modu: unia nazw narzędzi w typach jest zamknięta na te, które silnik znał przy kładzeniu typów
  *  (narzędzia rejestrowanego przez mod tam nie ma), więc wywołanie idzie przez `unknown`; silnik i tak kieruje je do hooka modu. */
 const szukajPrzezSilnik = ($: Dolar, args: Record<string, unknown>) =>
@@ -391,7 +389,7 @@ test('szukaj(): dokładna nazwa z JSDoc i sygnaturą, inne wystąpienia, metoda 
   expect(jsdoc(LINIE, L('* Pliki hosta') - 1, L('      fs: {'))).toBe('Pliki hosta.')
 })
 
-test('narzędzie szukaj przez silnik: session.start rejestruje komendę i narzędzie, tool.call odpowiada tekstem MCP, indeks budowany raz (jeden odczyt pliku, jeden zapis $.state), pusta nazwa → podpowiedź bez isError', async ($, on) => {
+test('narzędzie szukaj przez silnik: session.start rejestruje komendę i narzędzie, tool.call odpowiada { result: string } (błąd → { deny }), indeks budowany raz (jeden odczyt pliku, jeden zapis $.state), pusta nazwa → podpowiedź bez isError', async ($, on) => {
   const { log, start } = silnik($, on, { pliki: dysk(), katalogi: KATALOGI })
   await start()
   expect(log.komendy).toEqual(['warsztat'])

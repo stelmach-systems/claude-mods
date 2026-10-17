@@ -22,7 +22,7 @@
 // Bramki: zero `$.model`, zero `$.http`, zero `tool.check`, żadnego zapisu plików ani `$.store` (jedyny stan: `$.state`); jeden bieg
 // naraz; każdy hook z `.catch` (fail-open: błąd modu nie zatrzymuje startu sesji, polecenia, wywołania narzędzia ani rysowania).
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, FsEntry, McpToolResult, ProcessRunResult, Register, RenderSurface } from 'claude-code'
+import type { EngineInterface, FsEntry, ProcessRunResult, Register, RenderSurface } from 'claude-code'
 
 import type { Binarka, Indeks, Krok, RodzajKroku, StanKroku, Warsztat, Wpis } from '../types'
 
@@ -302,7 +302,6 @@ function zaladujIndeks($: EngineInterface): Promise<Zaladowany> {
   })().finally(() => (ladowanie = null)))
 }
 
-const wynik = (text: string, isError = false): McpToolResult => ({ content: [{ type: 'text', text }], isError })
 
 // ---------- /warsztat: brama katalogu i zamknięta lista argv (czyste funkcje) ----------
 const bezKoncowego = (p: string) => (p.length > 1 ? p.replace(/\/+$/, '') : p)
@@ -622,17 +621,20 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // Hook odpowiada za własne narzędzie (bez `next`: pod spodem nie ma nic, co by je obsłużyło); błąd → wynik z isError, nie wyjątek.
+  // Hook odpowiada za własne narzędzie (bez `next`: pod spodem nie ma nic, co by je obsłużyło). Odpowiedź to `{ result: tekst }`:
+  // silnik waliduje `result` wg schematu narzędzia — dla narzędzia z `$.tool.register` to string | bloki treści | undefined, obiekt MCP
+  // `{ content, isError }` odrzuca (próba na żywo 2026-10-17: „does not match its output shape”). Błąd → `{ deny: tekst }`: d.ts ToolCallResult
+  // „the model receives the text as an error result” — to jest isError narzędzia; wyjątku hook nie przepuszcza.
   on('tool.call', { tool: NARZEDZIE }, async ($, e) => {
     try {
       const arg = (e as unknown as Record<string, unknown>).nazwa
       const nazwa = typeof arg === 'string' ? arg : arg === undefined || arg === null ? '' : String(arg)
       const z = await zaladujIndeks($)
-      return { result: wynik(szukaj(z.ind, z.linie, nazwa, z.sciezka)) }
+      return { result: szukaj(z.ind, z.linie, nazwa, z.sciezka) }
     } catch (err) {
-      return { result: wynik(`szukaj: błąd — ${opisBledu(err)}`, true) }
+      return { deny: `szukaj: błąd — ${opisBledu(err)}` }
     }
-  }).catch(() => ({ result: wynik('szukaj: błąd modu — hook odrzucony', true) }))
+  }).catch(() => ({ deny: 'szukaj: błąd modu — hook odrzucony' }))
 
   // Hook odpowiada za własną komendę; try/catch, bo hook, który się wysypie, silnik pomija (komenda bez odpowiedzi).
   on('command.run', { command: 'warsztat' }, async ($, e) => {
