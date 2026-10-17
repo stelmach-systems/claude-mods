@@ -215,13 +215,17 @@ Nienaprawione, z uzasadnieniem:
   z `$.tool.register`.
 - Sprawdzone: `szukaj { nazwa: "tool.call" }` z modelu → silnik odrzucił odpowiedź v0.1 (`tool.call step resolved mcp__kanon-warsztat__szukaj
   with a result that does not match its output shape: expected string | array | undefined, received object`) — hook zwracał `{ result: { content,
-  isError } }`. Poprawione na `{ result: tekst }` / `{ deny: tekst }` (commit 2341e22); ponowne wywołanie po przeładowaniu — do dopisania.
+  isError } }`. Poprawione na `{ result: tekst }` / `{ deny: tekst }` (commit 2341e22). Po przeładowaniu (12:50) dwa wywołania z modelu przeszły:
+  `tool.call` → nagłówek `tool.call — zdarzenie (EngineEventOf — wejście hooka `e`; linie 4030–4030 w …/dev-mods/<sid>/kanon-warsztat/.claude-plugin/
+  types/claude-code/index.d.ts)`, JSDoc, `'tool.call': ToolCallInput;`, „Inne wystąpienia” = metoda `$.tool.call` (3082) i `EngineResultOf` (4589);
+  `fs.list` → metoda `$.fs.list` (3322) z JSDoc i `list: (path?: string) => Promise<FsEntry[]>;`, zdarzenia `OpEventOf` (7155) i `OpValueOf` (7370)
+  w „Inne wystąpienia” — ranking z recenzji potwierdzony na żywo. Model dostaje wynik jako zwykły tekst; źródło = d.ts położony przez silnik
+  przy ładowaniu modu (ścieżka 1 z „Skąd d.ts”).
 - `/warsztat ~/Developer/claude-mods/kanon-skrzynka` uruchomił właściciel z promptu (origin `composer` przeszedł — komenda nie odmówiła).
   Panel i wynik widzi tylko właściciel: sesja nie czyta własnego terminala ani `$.state` modu, odpowiedź komendy nie trafia do transkryptu,
   procesy `plugin validate/test` nie zostawiają plików. Relacja właściciela (wiersze OK/FAIL, czasy) — do dopisania.
 - Niesprawdzone do czasu relacji: rysowanie panelu w prawdziwym terminalu (kolory `warning`/`error`, hotkeye `p`/`k`, Esc), `$.ui.copy` na
-  żywo, ważność `$` po powrocie hooka (❓ wyżej), realne komunikaty odrzucenia `$.process.run` (ENOENT/timeout), czas kroków, kształt
-  wyniku `szukaj` w odpowiedzi narzędzia, `realPath` na prawdziwym dysku (macOS: `/tmp` → `/private/tmp` — bazy też są rozwiązywane,
+  żywo, ważność `$` po powrocie hooka (❓ wyżej), realne komunikaty odrzucenia `$.process.run` (ENOENT/timeout), czas kroków, `realPath` na prawdziwym dysku (macOS: `/tmp` → `/private/tmp` — bazy też są rozwiązywane,
   więc różnica prefiksu nie powinna odrzucać), zachowanie `$.state` i panelu po prawdziwym hot-reloadzie w trakcie biegu.
 
 ## Uruchomienie i rollback
