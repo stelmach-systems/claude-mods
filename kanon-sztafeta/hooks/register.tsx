@@ -1,10 +1,12 @@
-// kanon-sztafeta — przekazanie pałeczki do nowej sesji (mod Claude Code, API function hooks 2.1.299; early access). v0.1.
+// kanon-sztafeta — przekazanie pałeczki do nowej sesji (mod Claude Code, API function hooks 2.1.299; early access). v0.1.1.
 // Plan: ~/Developer/claude-kanon/claude-code/mods/PLAN-mody-2026-10-16-z-logow.md §3.1 (decyzja D1: z przyciskiem start_session).
 // Pasek nad promptem (AbovePrompt) pojawia się dopiero, gdy sesja spełnia co najmniej jeden warunek: ≥ 1 kompaktacja głównego wątku
 // (session.compact), wiek ≥ 8 h ($.session.usage().startedAt, w odwodzie zegar przy session.start), kontekst ≥ WARN (ta sama formuła
 // co kanon-pasek-budzetu: KANON_CTX_WARN albo okno budżetu − 80k; okno z env → settings → modelSettings → silnik; różnica wobec
 // hooka Stop kanon-budzet: mod nie czyta transkryptu, więc nie obniża WARN do mediany realnych punktów kompaktacji sesji — hook
-// pozostaje bramką). W świeżej sesji paska nie ma; /clear i resume zerują liczniki (session.end).
+// pozostaje bramką). W świeżej sesji paska nie ma; /clear i resume zerują liczniki (session.end). Pasmo AbovePrompt rysuje JEDEN hook
+// (d.ts: „draws a tree, or passes; one instance”): pasek składa pod sobą to, co narysowałby plugin niżej w łańcuchu (`next(e)`, np.
+// kanon-skrzynka), a gdy milczy, oddaje `next(e)` bez zmian (2026-10-17, po recenzji kanon-skrzynki).
 // /sztafeta → pane z OSTATNIĄ sekcją „## Stan” pliku ~/.claude/kanon/stan/<sid>.md (nie całym plikiem) i briefem dla nowej sesji
 // wyciętym deterministycznie z podsekcji „### Dalej…” i „### Decyzje…” (bez modelu). /sztafeta skrot → <sid>-skrot.md: ostatnia
 // sekcja „## Stan” + ostatni blok kompaktacji hooka kanon-stan („## Kompaktacja N” / „## Podsumowanie kompaktacji”), razem ≤ 8 KB
@@ -371,12 +373,19 @@ export const register: Register = on => {
       p === null ? 'stan: brak pliku' : p.sekcje === 0 ? `stan: plik bez „## Stan” (${temu(teraz - p.mtimeMs)})` : `stan: ${p.czas} (${temu(teraz - p.mtimeMs)}, „## Stan” #${p.sekcje})`
     const czesci = [`${n} ${odmiana(n, 'kompaktacja', 'kompaktacje', 'kompaktacji')}`, `sesja ${czasTrwania(wiek)}`, stan]
     if (zaWarn && c) czesci.push(`kontekst ${k(c.tokens)} ≥ WARN ${k(c.warn)}`)
+    // Pasmo rysuje JEDEN hook (d.ts: „draws a tree, or passes; one instance”): to, co narysowałby plugin niżej w łańcuchu
+    // (np. kanon-skrzynka), idzie pod paskiem zamiast zniknąć. Błąd niżej nie gasi paska. Przy maxRows < 2 pasek zostaje sam: drzewo
+    // wyższe niż maxRows przewija się w oknie bodyRows = maxRows − wiersz „n more”, więc stos w jednym wierszu byłby niewidoczny.
+    const nizej = e.props.maxRows >= 2 ? await next(e).catch(() => undefined) : undefined
     return (
-      <Box gap={1}>
-        <Text color="warning">⟳ sztafeta:</Text>
-        <Text>{czesci.join(' · ')}</Text>
-        <Button key="przekaz" label="Przekaż do nowej sesji" variant="primary" onPress={press => void przekaz($, press).catch(zglos($, 'przekazanie'))} />
-        <Button key="pokaz" label="Pokaż „dalej”" onPress={() => void pokaz($).catch(zglos($, 'panel'))} />
+      <Box flexDirection="column">
+        <Box gap={1}>
+          <Text color="warning">⟳ sztafeta:</Text>
+          <Text>{czesci.join(' · ')}</Text>
+          <Button key="przekaz" label="Przekaż do nowej sesji" variant="primary" onPress={press => void przekaz($, press).catch(zglos($, 'przekazanie'))} />
+          <Button key="pokaz" label="Pokaż „dalej”" onPress={() => void pokaz($).catch(zglos($, 'panel'))} />
+        </Box>
+        {nizej}
       </Box>
     )
   }).catch(($, e, next) => next(e))

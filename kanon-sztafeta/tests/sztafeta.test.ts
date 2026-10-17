@@ -42,6 +42,10 @@ type Silnik = {
   panelBezMiejsca?: boolean
   /** Każdy `fs.read` odmawia (EACCES) — plik istnieje, ale nie da się go przeczytać. */
   czytajBlad?: boolean
+  /** Napis, który rysuje plugin NIŻEJ w łańcuchu AbovePrompt: dno `ui.render` zwraca wtedy Text z nim zamiast pustego Box (rdzeń). */
+  dno?: string
+  /** Dno `ui.render` rzuca (plugin niżej się wysypał) — pasek ma zostać (fail-open na `next`). */
+  dnoRzuca?: boolean
 }
 
 /** Dno pod modem: liczby z „silnika”, dysk w pamięci, aplikacja desktop jako serwer MCP. Zwraca rejestr do asercji i zegar. */
@@ -74,7 +78,11 @@ function silnik(on: On, s: Silnik = {}) {
   on('turn.complete', () => ({ text: '' }))
   on('session.measure', (_$, e) => ({ changed: e.changed }))
   on('command.run', () => ({}))
-  on('ui.render', ($, e) => $.ui.resolve(e).Box({}))
+  // Dno łańcucha ui.render: pusty Box jak rdzeń silnika, albo — z `dno` — Text ze strażnikiem, jak plugin niżej w łańcuchu.
+  on('ui.render', ($, e) => {
+    if (s.dnoRzuca) throw new Error('dno ui.render padło (test)')
+    return s.dno === undefined ? $.ui.resolve(e).Box({}) : $.ui.resolve(e).Text({ children: s.dno })
+  })
   on('ui.toast', (_$, e) => {
     log.toasty.push(e.text)
     return { value: undefined }
@@ -432,5 +440,51 @@ test('plik stanu istnieje, ale fs.read odmawia: /sztafeta odpowiada tekstem z po
   await kompaktuj($)
   const pasek = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', ...PASEK, props: pasekProps })
   expect(await pasek.find({ text: /^1 kompaktacja · sesja 0 min · stan: brak pliku$/ }), 'nieczytelny plik = brak metadanych, pasek żyje').toBeDefined()
+  await pasek.unmount()
+})
+
+test('łańcuch AbovePrompt: świeża sesja oddaje rysunek pluginu niżej bez zmian; po kompaktacji pasek składa go pod sobą (next(e))', async ($, on) => {
+  silnik(on, { plik: MALY, dno: 'STRAZNIK-PLUGINU-NIZEJ' })
+  await start($)
+  const pasek = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', ...PASEK, props: pasekProps })
+  expect(await pasek.find({ type: 'Button', key: 'przekaz' }), 'świeża sesja: paska nie ma').toBeUndefined()
+  expect(await pasek.find({ type: 'Text', text: 'STRAZNIK-PLUGINU-NIZEJ' }), 'milczący pasek oddaje next(e) bez zmian').toBeDefined()
+
+  await kompaktuj($)
+  await pasek.redraw()
+  expect(await pasek.find({ text: /^1 kompaktacja · / }), 'własna linia paska').toBeDefined()
+  expect(await pasek.find({ type: 'Button', key: 'przekaz' })).toBeDefined()
+  const teksty = (await pasek.findAll({ type: 'Text' })).map(t => t.text)
+  expect(teksty[teksty.length - 1], 'plugin niżej POD paskiem, nie nad nim').toBe('STRAZNIK-PLUGINU-NIZEJ')
+  expect(teksty.some(t => t.startsWith('1 kompaktacja')), 'linia paska nad nim').toBe(true)
+  expect(await pasek.drawn(), 'stos w kolumnie: pasek NAD rysunkiem spod spodu, nie obok').toMatchObject({ type: 'Box', props: { flexDirection: 'column' } })
+
+  const ciasno = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', ...PASEK, props: { ...pasekProps, maxRows: 1 } })
+  expect(await ciasno.find({ text: /^1 kompaktacja · / }), 'jeden wiersz pasma: pasek').toBeDefined()
+  expect(await ciasno.find({ type: 'Text', text: 'STRAZNIK-PLUGINU-NIZEJ' }), 'maxRows 1: bez stosu (przewijałby się w zerowym oknie)').toBeUndefined()
+  await ciasno.unmount()
+  await pasek.unmount()
+})
+
+test('łańcuch AbovePrompt: dno rdzenia (pusty Box) ląduje pod paskiem bez tekstu — stos nie dodaje wiersza', async ($, on) => {
+  silnik(on, { plik: MALY })
+  await start($)
+  await kompaktuj($)
+  const pasek = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', ...PASEK, props: pasekProps })
+  expect(await pasek.drawn()).toMatchObject({ type: 'Box', props: { flexDirection: 'column' } })
+  const boxy = await pasek.findAll({ type: 'Box' })
+  expect(boxy, 'kolumna, wiersz paska, pusty Box rdzenia').toHaveLength(3)
+  expect(boxy[2]?.children, 'Box rdzenia bez dzieci (w Ink: 0 wierszy)').toHaveLength(0)
+  expect((await pasek.findAll({ type: 'Text' })).every(t => t.text.length > 0), 'żadnego pustego tekstu w stosie').toBe(true)
+  await pasek.unmount()
+})
+
+test('łańcuch AbovePrompt: plugin niżej się wysypuje (dno ui.render rzuca) — pasek rysuje się dalej', async ($, on) => {
+  silnik(on, { plik: MALY, dnoRzuca: true })
+  await start($)
+  await kompaktuj($)
+  const pasek = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', ...PASEK, props: pasekProps })
+  expect(await pasek.find({ text: /^1 kompaktacja · / }), 'fail-open: błąd niżej nie gasi paska').toBeDefined()
+  expect(await pasek.find({ type: 'Button', key: 'przekaz' })).toBeDefined()
   await pasek.unmount()
 })
