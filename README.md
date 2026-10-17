@@ -23,16 +23,23 @@ w nim zabiera mody sesjom. Nie usuwaj `~/Developer/claude-mods`: worktree stabil
 4. Nowy mod w każdej sesji: ścieżka `~/Developer/claude-mods-stabilne/<mod>` w `env.CLAUDE_CODE_PLUGIN_DIRS` (`~/.claude/settings.json`,
    z backupem i planem rollbacku; działa od nowej sesji). Eksperyment nigdy nie trafia do env.
 
-## Mody (w env: trzy od 2026-10-11, `kanon-na-biegu` od 2026-10-16, `kanon-brief` od 2026-10-17)
+## Mody (w env: trzy od 2026-10-11, `kanon-na-biegu` od 2026-10-16, `kanon-brief`, `kanon-sztafeta` i `kanon-skrzynka` od 2026-10-17)
 
 - `kanon-agenci/` (v0.1.1) — panel `/agenci`: subagenci sesji z realnym modelem każdego żądania, tokenami, `⚠ tag≠model`.
-- `kanon-pasek-budzetu/` (v0.2) — pasek nad promptem: kontekst / okno auto-kompaktacji, limity konta 5h/7d, koszt; log zużycia JSONL.
+- `kanon-pasek-budzetu/` (v0.2.1) — pasek nad promptem: kontekst / okno auto-kompaktacji, limity konta 5h/7d, koszt; log zużycia JSONL.
+  Od v0.2.1 składa łańcuch AbovePrompt (`next(e)`): paski modów rysują się jeden nad drugim w kolejności `CLAUDE_CODE_PLUGIN_DIRS`.
 - `kanon-flota/` (v0.1) — pane `/flota`: wszystkie żywe sesje na Macu z `claude agents --json`, stan z czasem, ctx/koszt/liczniki
   wiadomości między sesjami, ping.
 - `kanon-na-biegu/` (v0.1) — sekcja „⚡ Na biegu” w pasku bocznym desktopu: sesja z turą sama się do niej
   wkłada, po dobie bezczynności wraca do grupy pochodzenia; `/na-biegu`. Jedyny mod z `tool.check` (zgoda tylko na własne `move_sessions`).
 - `kanon-brief/` (v0.1) — formularz `/brief` na start zadania: repo/folder, stawka, tryb, „gotowe, gdy”, recall,
   granice → polecenie po polsku w polu promptu (Enter naciska właściciel); toast raz w turze 1 przy poleceniu < 200 znaków.
+- `kanon-sztafeta/` (v0.1.1) — pasek „⟳ sztafeta” po kompaktacji / 8 h sesji / kontekście ≥ WARN; `/sztafeta` z ostatnią sekcją
+  „## Stan” i briefem do nowej sesji, `/sztafeta skrot` (≤ 8 KB do `~/.claude/kanon/stan/<sid>-skrot.md`), przycisk `start_session`
+  z zapasem prompt + schowek. Składa `next(e)`.
+- `kanon-skrzynka/` (v0.1) — linia „📬 n do przeczytania” nad promptem: nieprzeczytane raporty WATCH i USAGE-tydzien oraz pliki stanu
+  innych sesji spod `~/.claude/kanon/` (tylko nagłówki, nigdy treść); `/skrzynka` z „Wczytaj” (`prompt.fill`) i „Przeczytane”
+  (`$.store`); polecenie „wczytaj <ścieżka>” liczy się jako przeczytane (D6).
 
 Bramki wspólne: zero `$.model`, zero `$.http`; dane modów bez treści rozmów. Szczegóły i odstępstwa — README każdego modu.
 `$.process.run` / `$.process.spawn` (decyzja właściciela 2026-10-17, D5 w planie 10-16 §6.6): tylko argv wymienione w `calls:`
