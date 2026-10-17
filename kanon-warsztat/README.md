@@ -13,7 +13,7 @@ testów; przyciski **Powtórz** i **Kopiuj błędy**.
 Karta: `~/Developer/claude-kanon/claude-code/mods/PLAN-mody-2026-10-16-z-logow.md` §6.2. Zero modelu, zero sieci, zero zapisu plików,
 zero `tool.check`; jedyny stan — `$.state` (indeks i wynik ostatniego biegu). `$.process.run` tylko z zamkniętej listy argv (niżej),
 bez shella, zawsze z `timeoutMs`, `cwd` wyłącznie w `~/Developer/claude-mods`, `~/Developer/claude-mods-stabilne` albo pod
-`$.session.root()` (reguła D5 z README repo; rozszerzenie o `-stabilne` — patrz Odstępstwa).
+`$.session.root()` (reguła D5 z README repo, rozszerzona o `-stabilne` 2026-10-17 — commit repo 5ca8558; patrz Odstępstwa).
 
 ## Skąd d.ts
 
@@ -101,8 +101,9 @@ node --experimental-strip-types --no-warnings skrypty/sanity-dts.ts [ścieżka d
 - Kroki `claude` dostają `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` (jak kanon-flota) — validate i test nie potrzebują sieci.
 - Katalog modu musi mieć `plugin.json` (karta mówi tylko o cwd) — chroni przed uruchomieniem `claude plugin test` na dowolnym katalogu.
 - Komenda tylko z origin `composer`/`bridge` (karta o tym milczy) — jak D6 w kanon-skrzynka.
-- Baza `~/Developer/claude-mods-stabilne`: zlecenie mówiło `~/Developer/claude-mods*`, a D5 w README repo wymienia tylko `claude-mods`
-  i `$.session.root()`. Zostawione jako jawna nazwa (bez globa); dopisanie do D5 albo wycięcie = decyzja właściciela.
+- Baza `~/Developer/claude-mods-stabilne`: zlecenie mówiło `~/Developer/claude-mods*`, a D5 w README repo wymieniało tylko `claude-mods`
+  i `$.session.root()`. Zostawione jako jawna nazwa (bez globa); właściciel dopisał `-stabilne` do D5 2026-10-17 (README repo, commit
+  5ca8558: „testy po awansie biegną w stabilne”) — od tego commita to nie jest odstępstwo.
 
 ## Bramki
 
@@ -205,7 +206,7 @@ Nienaprawione, z uzasadnieniem:
   udokumentowane; czas pokazuje próba na żywo.
 - ❓ ważność `$.process.run` i `$.state` z `biegnij` po powrocie hooka `command.run` (bez `await`, do 10 min) — d.ts tego nie opisuje;
   rozstrzyga próba na żywo (sekcja niżej). Gdyby `$` gasło, pierwszy krok padłby z komunikatem silnika w wierszu FAIL.
-- ❓ `claude-mods-stabilne` w D5 — decyzja właściciela (Odstępstwa).
+- ❓ `claude-mods-stabilne` w D5 — rozstrzygnięte 2026-10-17: właściciel rozszerzył D5 (README repo, commit 5ca8558; Odstępstwa).
 
 ## Sprawdzone na żywo / niesprawdzone
 
@@ -225,13 +226,14 @@ Nienaprawione, z uzasadnieniem:
   Panel i wynik widzi tylko właściciel: sesja nie czyta własnego terminala ani `$.state` modu, odpowiedź komendy nie trafia do transkryptu,
   procesy `plugin validate/test` nie zostawiają plików. Relacja właściciela (wiersze OK/FAIL, czasy) — do dopisania.
 - Niesprawdzone do czasu relacji: rysowanie panelu w prawdziwym terminalu (kolory `warning`/`error`, hotkeye `p`/`k`, Esc), `$.ui.copy` na
-  żywo, ważność `$` po powrocie hooka (❓ wyżej), realne komunikaty odrzucenia `$.process.run` (ENOENT/timeout), czas kroków, `realPath` na prawdziwym dysku (macOS: `/tmp` → `/private/tmp` — bazy też są rozwiązywane,
-  więc różnica prefiksu nie powinna odrzucać), zachowanie `$.state` i panelu po prawdziwym hot-reloadzie w trakcie biegu.
+  żywo, ważność `$` po powrocie hooka (❓ wyżej), realne komunikaty odrzucenia `$.process.run` (ENOENT/timeout), czas kroków,
+  `realPath` na prawdziwym dysku (macOS: `/tmp` → `/private/tmp` — bazy też są rozwiązywane, więc różnica prefiksu nie powinna odrzucać), zachowanie `$.state` i panelu po prawdziwym hot-reloadzie w trakcie biegu.
 
 ## Uruchomienie i rollback
 
 - Próba: kopia do `~/.claude/dev-mods/<session_id>/kanon-warsztat/` (hot-reload za zgodą właściciela) albo
   `claude --plugin-dir ~/Developer/claude-mods/kanon-warsztat`. `.claude-plugin/types/` jest w `.gitignore` — silnik kładzie je sam.
-- Stabilnie: awans ff-only do `claude-mods-stabilne` i wpis w `CLAUDE_CODE_PLUGIN_DIRS` — decyzja właściciela (README repo).
+- Stabilnie: README repo (commit 5ca8558) wpisuje kanon-warsztat do `CLAUDE_CODE_PLUGIN_DIRS` od 2026-10-17; w `claude-mods-stabilne`
+  katalog jest (HEAD 5ca8558 w chwili tego commita). Awans ff-only i env prowadzi właściciel.
 - Rollback: usunąć wpis z `CLAUDE_CODE_PLUGIN_DIRS` (albo folder z dev-mods). Mod nie zostawia nic poza `$.state` sesji — po restarcie
   nie ma śladu.
