@@ -60,7 +60,11 @@ node --experimental-strip-types --no-warnings skrypty/sanity-dts.ts [ścieżka d
     i `… +N więcej`;
   - brak → `szukaj: brak „x” wśród 956 wpisów …` z przykładami nazw (echo zapytania przycięte do 80 znaków); pusta nazwa → podpowiedź
     (bez `isError`);
-  - każda odpowiedź dłuższa niż 2048 znaków (także lista i „brak”) jest przycinana z dopiskiem `… [przycięte do 2048 znaków; …]`.
+  - każda odpowiedź dłuższa niż 2048 znaków (także lista i „brak”) jest przycinana z dopiskiem `… [przycięte do 2048 znaków; …]`;
+  - kształt odpowiedzi hooka: `{ result: tekst }` (string). Silnik waliduje `result` wg schematu narzędzia — dla narzędzia
+    z `$.tool.register` to `string | bloki treści | undefined`; obiekt MCP `{ content, isError }` odrzuca (`does not match its output
+    shape`, próba na żywo 2026-10-17 — v0.1 z commita 747446e tak odpowiadał i narzędzie nie działało). Błąd (brak d.ts, plik
+    nieczytelny, wyjątek) → `{ deny: tekst }`: d.ts `ToolCallResult` — „the model receives the text as an error result”.
 - `/warsztat` — katalog modu z argumentu (`~`, ścieżka względna od cwd sesji, bezwzględna) albo cwd sesji. Brama (odmowa = tekst komendy,
   bez procesu i bez panelu): ścieżka bez `..`; leksykalnie w `~/Developer/claude-mods`, `~/Developer/claude-mods-stabilne` albo pod
   `$.session.root()` (root pomijany, gdy jest HOME, przodkiem HOME albo `/` — sesja zaczęta w `~` nie otwiera całego dysku); jest
@@ -134,8 +138,8 @@ Zawsze `{ cwd: <katalog modu rozwiązany>, timeoutMs: 120000 }`, dla `claude` do
 - Zero `$.model`, `$.http`, `$.fs.write`, `$.store`, `tool.check`; zapisy tylko do `$.state` (`kanon-warsztat.warsztat`,
   `kanon-warsztat.indeks` — kontrakt w `types/index.d.ts`); wyjścia procesów nie trafiają do `$.state` (pamięć modułu).
 - Każdy hook z `.catch` (fail-open): `session.start` przepuszcza `next(e)` (rejestracje komendy i narzędzia osobno — padnięta jedna nie
-  wyłącza drugiej, toast mówi, czego brakuje), `tool.call` odpowiada `isError` z opisem, `command.run` tekstem błędu, `ui.render`
-  przepuszcza `next(e)`. Odczyty katalogów i plików w try/catch (brak = brak kandydata, bez toasta).
+  wyłącza drugiej, toast mówi, czego brakuje), `tool.call` odpowiada `{ deny: opis }` (błąd narzędzia dla modelu, bez wyjątku),
+  `command.run` tekstem błędu, `ui.render` przepuszcza `next(e)`. Odczyty katalogów i plików w try/catch (brak = brak kandydata, bez toasta).
 - Odrzucenie `$.process.run` klasyfikowane po czasie i komunikacie (d.ts nie podaje brzmienia): `ENOENT|not found|no such file` → `brak
   binarki: …`; zmierzony czas ≥ 119 s albo `timed out|timeout|SIGKILL|SIGTERM|killed` → `TIMEOUT przekroczone 120 s`; inne → FAIL
   z komunikatem. Realne brzmienie komunikatów silnika — Niesprawdzone.
@@ -168,7 +172,8 @@ dowiązanie poza bazy → odmowa bez procesu i panelu; `~`, względna, końcowy 
 | desktop 2.1.299 (`…/claude.app/Contents/MacOS/claude`) | ✔ | 18/18 (1,2 s) | — |
 
 Czego kit nie pokaże (zegar `mock.clock` stoi, dysku brak): czas kroków (wszędzie 0 s), prawdziwy d.ts (→ `skrypty/sanity-dts.ts`),
-ważność `$.process.run`/`$.state` po powrocie hooka `command.run` (→ próba na żywo). Zapis `$.state` przerysowuje zamontowany panel
+ważność `$.process.run`/`$.state` po powrocie hooka `command.run` (→ próba na żywo), kształt wyniku `tool.call` — kit oddaje odpowiedź
+hooka bez walidacji wg schematu narzędzia (18/18 przechodziło z obiektem MCP, który silnik odrzuca; wykryte dopiero na żywo). Zapis `$.state` przerysowuje zamontowany panel
 „at the redraw rate” (d.ts `ui.render` @remarks), więc test montuje panel po `zegar.settle()`, nie przed.
 
 ## Recenzja
@@ -204,11 +209,17 @@ Nienaprawione, z uzasadnieniem:
 
 ## Sprawdzone na żywo / niesprawdzone
 
-- 2026-10-17: kopia położona w `~/.claude/dev-mods/75062a34-df32-45d9-b7f9-f3ea21129151/kanon-warsztat/` (bez `.claude-plugin/types`);
-  hot-reload = pytanie do właściciela, mod ładuje się po końcu tury, w której padła zgoda. `/warsztat ~/Developer/claude-mods/kanon-skrzynka`
-  wpisuje właściciel (komenda przyjmuje tylko origin `composer`/`bridge`; sesja nie widzi własnego terminala), wywołanie `szukaj` robi model
-  przez ToolSearch. Wynik próby — do dopisania tutaj.
-- Niesprawdzone do czasu próby: rysowanie panelu w prawdziwym terminalu (kolory `warning`/`error`, hotkeye `p`/`k`, Esc), `$.ui.copy` na
+- 2026-10-17, sesja 75062a34 (desktop 2.1.299): kopia w `~/.claude/dev-mods/<sid>/kanon-warsztat/` (bez `.claude-plugin/types`), właściciel
+  włączył hot-reload ok. 12:08 — mod załadował się bez linii o błędzie w transkrypcie, silnik położył `.claude-plugin/types/` (claude-code,
+  claude-code-mcp, claude-code-tools, tsconfig), narzędzie `mcp__kanon-warsztat__szukaj` pojawiło się w ToolSearch z opisem i schematem
+  z `$.tool.register`.
+- Sprawdzone: `szukaj { nazwa: "tool.call" }` z modelu → silnik odrzucił odpowiedź v0.1 (`tool.call step resolved mcp__kanon-warsztat__szukaj
+  with a result that does not match its output shape: expected string | array | undefined, received object`) — hook zwracał `{ result: { content,
+  isError } }`. Poprawione na `{ result: tekst }` / `{ deny: tekst }` (commit 2341e22); ponowne wywołanie po przeładowaniu — do dopisania.
+- `/warsztat ~/Developer/claude-mods/kanon-skrzynka` uruchomił właściciel z promptu (origin `composer` przeszedł — komenda nie odmówiła).
+  Panel i wynik widzi tylko właściciel: sesja nie czyta własnego terminala ani `$.state` modu, odpowiedź komendy nie trafia do transkryptu,
+  procesy `plugin validate/test` nie zostawiają plików. Relacja właściciela (wiersze OK/FAIL, czasy) — do dopisania.
+- Niesprawdzone do czasu relacji: rysowanie panelu w prawdziwym terminalu (kolory `warning`/`error`, hotkeye `p`/`k`, Esc), `$.ui.copy` na
   żywo, ważność `$` po powrocie hooka (❓ wyżej), realne komunikaty odrzucenia `$.process.run` (ENOENT/timeout), czas kroków, kształt
   wyniku `szukaj` w odpowiedzi narzędzia, `realPath` na prawdziwym dysku (macOS: `/tmp` → `/private/tmp` — bazy też są rozwiązywane,
   więc różnica prefiksu nie powinna odrzucać), zachowanie `$.state` i panelu po prawdziwym hot-reloadzie w trakcie biegu.
