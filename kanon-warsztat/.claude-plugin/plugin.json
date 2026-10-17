@@ -1,0 +1,7 @@
+{
+  "name": "kanon-warsztat",
+  "version": "0.1.0",
+  "author": { "name": "Stelmach Systems" },
+  "description": "Warsztat modów Claude Code: narzędzie modelu `szukaj` (JSDoc i sygnatura zdarzenia, metody `$.…` albo typu z lokalnego claude-code/index.d.ts po nazwie, indeks budowany leniwie, wynik ≤ 2048 znaków — zamiast grep po 16 tys. linii) i komenda /warsztat [ścieżka] (dla katalogu modu kolejno: `claude plugin validate .` i `claude plugin test .` na CLI ~/.local/bin i na binarce desktopu, potem `tsc --noEmit -p .`; tabela binarka × krok z OK/FAIL/czas/liczbą testów, przyciski Powtórz i Kopiuj błędy). Zamknięta lista argv, bez shella, cwd tylko w ~/Developer/claude-mods* albo katalogu sesji. Zero modelu, zero sieci, zero zapisu plików.",
+  "types": "./types/index.d.ts"
+}
