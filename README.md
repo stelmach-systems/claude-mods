@@ -23,7 +23,7 @@ w nim zabiera mody sesjom. Nie usuwaj `~/Developer/claude-mods`: worktree stabil
 4. Nowy mod w każdej sesji: ścieżka `~/Developer/claude-mods-stabilne/<mod>` w `env.CLAUDE_CODE_PLUGIN_DIRS` (`~/.claude/settings.json`,
    z backupem i planem rollbacku; działa od nowej sesji). Eksperyment nigdy nie trafia do env.
 
-## Mody (w env: trzy od 2026-10-11, `kanon-na-biegu` od 2026-10-16, `kanon-brief`, `kanon-sztafeta` i `kanon-skrzynka` od 2026-10-17)
+## Mody (w env: trzy od 2026-10-11, `kanon-na-biegu` od 2026-10-16, `kanon-brief`, `kanon-sztafeta`, `kanon-skrzynka` i `kanon-warsztat` od 2026-10-17)
 
 - `kanon-agenci/` (v0.1.1) — panel `/agenci`: subagenci sesji z realnym modelem każdego żądania, tokenami, `⚠ tag≠model`.
 - `kanon-pasek-budzetu/` (v0.2.1) — pasek nad promptem: kontekst / okno auto-kompaktacji, limity konta 5h/7d, koszt; log zużycia JSONL.
@@ -40,9 +40,14 @@ w nim zabiera mody sesjom. Nie usuwaj `~/Developer/claude-mods`: worktree stabil
 - `kanon-skrzynka/` (v0.1) — linia „📬 n do przeczytania” nad promptem: nieprzeczytane raporty WATCH i USAGE-tydzien oraz pliki stanu
   innych sesji spod `~/.claude/kanon/` (tylko nagłówki, nigdy treść); `/skrzynka` z „Wczytaj” (`prompt.fill`) i „Przeczytane”
   (`$.store`); polecenie „wczytaj <ścieżka>” liczy się jako przeczytane (D6).
+- `kanon-warsztat/` (v0.1) — narzędzie modelu `szukaj` (JSDoc i sygnatura zdarzenia, metody `$.…` albo typu z lokalnego d.ts po nazwie;
+  indeks leniwy w `$.state`, wynik ≤ 2048 znaków) i `/warsztat [katalog modu]`: `claude plugin validate/test` na CLI i na binarce
+  desktopu oraz `tsc --noEmit` przez `$.process.run` z zamkniętej listy argv; panel binarka × krok, „Powtórz”, „Kopiuj błędy”.
 
 Bramki wspólne: zero `$.model`, zero `$.http`; dane modów bez treści rozmów. Szczegóły i odstępstwa — README każdego modu.
 `$.process.run` / `$.process.spawn` (decyzja właściciela 2026-10-17, D5 w planie 10-16 §6.6): tylko argv wymienione w `calls:`
-README modu, bez shella, zawsze z `timeoutMs`, `cwd` w `~/Developer/claude-mods` albo `$.session.root()`; wyłącznie komendy
-odczytowe lub testowe (`claude agents --json`, `claude plugin validate/test`, `git status/log`, `tsc --noEmit`); nigdy `ssh`,
-`lftp`, `curl`, `launchctl`, `rm`, `git push`. Precedens: `kanon-flota` (`claude agents --json`, timeout 5 s).
+README modu, bez shella, zawsze z `timeoutMs`, `cwd` w `~/Developer/claude-mods`, `~/Developer/claude-mods-stabilne` (dopisane
+2026-10-17 przy awansie kanon-warsztat — testy po awansie biegną w stabilne) albo `$.session.root()`; wyłącznie komendy odczytowe
+lub testowe (`claude agents --json`, `claude plugin validate/test`, `git status/log`, `tsc --noEmit`); nigdy `ssh`, `lftp`, `curl`,
+`launchctl`, `rm`, `git push`. Precedensy: `kanon-flota` (`claude agents --json`, timeout 5 s), `kanon-warsztat` (`claude plugin
+validate/test` na obu binarkach i `tsc.js`, timeout 120 s, strażnik argv sprawdzany tuż przed uruchomieniem).
