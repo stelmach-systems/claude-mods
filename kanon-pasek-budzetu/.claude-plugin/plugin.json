@@ -1,6 +1,6 @@
 {
   "name": "kanon-pasek-budzetu",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": { "name": "Stelmach Systems" },
   "description": "Pasek budżetu nad promptem: tokeny / okno auto-kompaktacji (próg WARN jak hook kanon-budzet), limity konta 5h/7d, koszt sesji; /budzet pokazuje też model i udział cache ostatniego żądania. Log JSONL zużycia (same liczby) do ~/.claude/kanon/usage/sesje/, KANON_USAGE_LOG=0 wyłącza.",
   "types": "./types/index.d.ts"

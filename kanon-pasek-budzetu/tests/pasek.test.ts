@@ -3,6 +3,7 @@
 // `{ value }`, zdarzenia rdzenia (turn.complete, turn.step, session.measure, command.run, ui.render, session.compact) zwracają
 // wynik jak silnik.
 import { expect, mock, test } from 'claude-code/testing'
+import type { TestBody } from 'claude-code/testing'
 import type { On, SessionRateLimit, TurnStepResult, TurnUsage } from 'claude-code'
 
 const PLUGIN = 'kanon-pasek-budzetu'
@@ -28,6 +29,7 @@ const uzycie = (model: string, input = 3000, cache = 58_000, output = 1200): Tur
 const tura = { answer: 'ok', durationMs: 10, isAborted: false, turnId: 't1', reason: 'answer' as const }
 const props = { hasSurvey: false, isWorking: false, maxRows: 2, bodyColumns: 120, scroll: { offset: 0, bodyRows: 40 }, view: {} }
 const komenda = { command: 'budzet', args: '', origin: { kind: 'composer' as const }, presentation: { isFullscreen: false, columns: 100 } }
+type Dolar = Parameters<TestBody>[0]
 
 type Silnik = {
   env?: Record<string, string>
@@ -40,6 +42,10 @@ type Silnik = {
   pliki?: Record<string, string>
   /** Każdy `fs.read` odmawia (EACCES, błąd I/O) — plik istnieje, ale nie da się go przeczytać. */
   czytajBlad?: boolean
+  /** Napis, który rysuje plugin NIŻEJ w łańcuchu AbovePrompt: dno `ui.render` zwraca wtedy Text z nim zamiast pustego Box (rdzeń). */
+  dno?: string
+  /** Dno `ui.render` rzuca (plugin niżej się wysypał) — pasek ma zostać (fail-open na `next`). */
+  dnoRzuca?: boolean
 }
 
 /** Dno pod modem: liczby z „silnika”, dysk w pamięci, puste odpowiedzi zdarzeń rdzenia. Zwraca rejestr do asercji. */
@@ -80,11 +86,15 @@ function silnik(on: On, s: Silnik) {
   on('session.measure', (_$, e) => ({ changed: e.changed }))
   on('command.run', () => ({}))
   on('session.compact', () => ({ skip: 'test' }))
-  on('ui.render', ($, e) => $.ui.resolve(e).Box({}))
+  // Dno łańcucha ui.render: pusty Box jak rdzeń silnika, albo — z `dno` — Text ze strażnikiem, jak plugin niżej w łańcuchu.
+  on('ui.render', ($, e) => {
+    if (s.dnoRzuca) throw new Error('dno ui.render padło (test)')
+    return s.dno === undefined ? $.ui.resolve(e).Box({}) : $.ui.resolve(e).Text({ children: s.dno })
+  })
   return log
 }
 
-async function krok($: Parameters<Parameters<typeof test>[1]>[0], model: string, agentId?: string) {
+async function krok($: Dolar, model: string, agentId?: string) {
   const s = $.turn.step({ turnId: 't1', index: 0, model, messageCount: 3, ...(agentId ? { agentId } : {}) })
   for await (const _ of s) {
     // liczy się wynik
@@ -253,7 +263,7 @@ test('log JSONL: po turze głównego wątku jedna linia z liczbami i modelem, be
   expect([...log.pliki.keys()]).toEqual([sciezka])
   const linie = (log.pliki.get(sciezka) ?? '').trimEnd().split('\n')
   expect(linie).toHaveLength(1)
-  const w = JSON.parse(linie[0])
+  const w = JSON.parse(linie[0] ?? '')
   expect(w).toEqual({
     t: '2026-10-10T10:00:00.000Z',
     sid: 'test-sid',
@@ -305,8 +315,8 @@ test('log JSONL: historia bez końcowego \\n dostaje go przed nową linią — o
   await $.turn.complete({ ...tura, usage: uzycie('claude-opus-5-5') })
   const linie = (log.pliki.get(SCIEZKA) ?? '').trimEnd().split('\n')
   expect(linie).toHaveLength(2)
-  expect(JSON.parse(linie[0]).t).toBe('2026-10-09T00:00:00.000Z')
-  expect(JSON.parse(linie[1]).turn).toBe('t1')
+  expect(JSON.parse(linie[0] ?? '').t).toBe('2026-10-09T00:00:00.000Z')
+  expect(JSON.parse(linie[1] ?? '').turn).toBe('t1')
 })
 
 test('log JSONL: plik powyżej 2 MiB → brak dopisania i JEDEN toast, historia nietknięta', async ($, on) => {
@@ -344,4 +354,50 @@ test('session.measure i turn.complete równocześnie → jeden toast limitu, nie
     $.turn.complete({ ...tura, usage: uzycie('claude-opus-5-5') }),
   ])
   expect(log.toasty.filter(t => t.startsWith('Limit konta'))).toHaveLength(1)
+})
+
+test('łańcuch AbovePrompt: pasek składa pod sobą rysunek pluginu niżej (next(e)); gdy milczy (Ukryj), oddaje go bez zmian', async ($, on) => {
+  silnik(on, { env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: '300000' }, tokens: () => 142_000, dno: 'STRAZNIK-PLUGINU-NIZEJ' })
+
+  await $.turn.complete(tura)
+  const pasek = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props })
+  expect(await pasek.find({ text: /142k \/ 300k/ }), 'własna linia paska').toBeDefined()
+  expect(await pasek.find({ type: 'Text', text: 'STRAZNIK-PLUGINU-NIZEJ' }), 'rysunek pluginu niżej nie zniknął').toBeDefined()
+  const teksty = (await pasek.findAll({ type: 'Text' })).map(t => t.text)
+  expect(teksty[teksty.length - 1], 'plugin niżej POD paskiem, nie nad nim').toBe('STRAZNIK-PLUGINU-NIZEJ')
+  expect(teksty.some(t => t.includes('142k / 300k')), 'linia paska nad nim').toBe(true)
+  expect(await pasek.drawn(), 'stos w kolumnie: pasek NAD rysunkiem spod spodu, nie obok').toMatchObject({ type: 'Box', props: { flexDirection: 'column' } })
+
+  const ciasno = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: { ...props, maxRows: 1 } })
+  expect(await ciasno.find({ text: /142k \/ 300k/ }), 'jeden wiersz pasma: pasek').toBeDefined()
+  expect(await ciasno.find({ type: 'Text', text: 'STRAZNIK-PLUGINU-NIZEJ' }), 'maxRows 1: bez stosu (przewijałby się w zerowym oknie)').toBeUndefined()
+  await ciasno.unmount()
+
+  await pasek.press({ key: 'ukryj' })
+  expect(await pasek.find({ text: /142k/ }), 'pasek ukryty').toBeUndefined()
+  expect(await pasek.find({ type: 'Text', text: 'STRAZNIK-PLUGINU-NIZEJ' }), 'milczący pasek oddaje next(e) bez zmian').toBeDefined()
+  await pasek.unmount()
+})
+
+test('łańcuch AbovePrompt: dno rdzenia (pusty Box) ląduje pod paskiem bez tekstu — stos nie dodaje wiersza', async ($, on) => {
+  silnik(on, { env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: '300000' }, tokens: () => 142_000 })
+
+  await $.turn.complete(tura)
+  const pasek = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props })
+  expect(await pasek.drawn()).toMatchObject({ type: 'Box', props: { flexDirection: 'column' } })
+  const boxy = await pasek.findAll({ type: 'Box' })
+  expect(boxy, 'kolumna, wiersz paska, pusty Box rdzenia').toHaveLength(3)
+  expect(boxy[2]?.children, 'Box rdzenia bez dzieci (w Ink: 0 wierszy)').toHaveLength(0)
+  expect((await pasek.findAll({ type: 'Text' })).every(t => t.text.length > 0), 'żadnego pustego tekstu w stosie').toBe(true)
+  await pasek.unmount()
+})
+
+test('łańcuch AbovePrompt: plugin niżej się wysypuje (dno ui.render rzuca) — pasek rysuje się dalej', async ($, on) => {
+  silnik(on, { env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: '300000' }, tokens: () => 142_000, dnoRzuca: true })
+
+  await $.turn.complete(tura)
+  const pasek = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props })
+  expect(await pasek.find({ text: /142k \/ 300k/ }), 'fail-open: błąd niżej nie gasi paska').toBeDefined()
+  expect(await pasek.find({ type: 'Button', key: 'ukryj' })).toBeDefined()
+  await pasek.unmount()
 })

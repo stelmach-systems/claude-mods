@@ -1,0 +1,2 @@
+# Typy API kładzie silnik przy załadowaniu modu (albo kopia do tsc) — nie do repo.
+.claude-plugin/types/

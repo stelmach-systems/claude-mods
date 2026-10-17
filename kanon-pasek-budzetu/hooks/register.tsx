@@ -1,4 +1,4 @@
-// kanon-pasek-budzetu — pasek budżetu nad promptem (mod Claude Code, API function hooks 2.1.293; early access). v0.2.
+// kanon-pasek-budzetu — pasek budżetu nad promptem (mod Claude Code, API function hooks 2.1.293; early access). v0.2.1.
 // Liczby: $.session.usage() (context.tokens / percent / window, rateLimits 5h/7d, cost.usd — wywołanie bez breakdown jest darmowe)
 // oraz zdarzenie session.measure (te same liczby PCHANE przez silnik po każdej turze głównego wątku i gdy okno limitu ruszy o punkt).
 // Okno BUDŻETU = env CLAUDE_CODE_AUTO_COMPACT_WINDOW (ma pierwszeństwo, jak w kanonie) → settings.autoCompactWindow →
@@ -13,6 +13,9 @@
 // ani nie zatwierdza wywołań narzędzi (tool.call służy wyłącznie do odświeżenia odczytu PO `next`). /budzet [ukryj|pokaz].
 // Pomiary z session.measure i z turn.complete mogą biec równocześnie — `zastosuj` idzie przez kolejkę modułu, żeby flagi toastów
 // i para odczyt/limity nie przeplatały się (recenzja 2026-10-10).
+// Pasmo AbovePrompt rysuje JEDEN hook (d.ts: „draws a tree, or passes; one instance”): pasek składa pod sobą to, co narysowałby plugin
+// niżej w łańcuchu (`next(e)`: kanon-sztafeta, kanon-skrzynka), a gdy milczy (brak odczytu, ankieta, `ukryj`), oddaje `next(e)` bez zmian
+// (2026-10-17, po recenzji kanon-skrzynki: własne drzewo bez `next` zasłaniało pluginy niżej).
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionCost, SessionRateLimit, SessionUsage, TurnCompleteInput } from 'claude-code'
 
@@ -280,16 +283,23 @@ export const register: Register = on => {
     const liczby = `${k(o.tokens)} / ${k(o.okno)} (${Math.round((o.tokens / o.okno) * 100)} %)`
     const progi = `WARN ${k(o.warn)} · kompaktacja ~${k(o.kompaktacja)}`
     const maLimity = l !== null && (l.p5h !== null || l.p7d !== null)
+    // Pasmo rysuje JEDEN hook (d.ts: „draws a tree, or passes; one instance”): to, co narysowałby plugin niżej w łańcuchu
+    // (kanon-sztafeta, kanon-skrzynka), idzie pod paskiem zamiast zniknąć. Błąd niżej nie gasi paska. Przy maxRows < 2 pasek zostaje
+    // sam: drzewo wyższe niż maxRows przewija się w oknie bodyRows = maxRows − wiersz „n more”, więc stos w jednym wierszu byłby niewidoczny.
+    const nizej = e.props.maxRows >= 2 ? await next(e).catch(() => undefined) : undefined
 
     return (
-      <Box gap={1}>
-        <Text color={kolor}>{pasek}</Text>
-        <Text bold={o.tokens >= o.warn}>{liczby}</Text>
-        {szerokie && <Text dimColor>{progi}</Text>}
-        {maLimity && <Text color={kolorLimitow(l)}>{`5h ${procent(l.p5h)} · 7d ${procent(l.p7d)}`}</Text>}
-        {szerokie && l?.usd != null && <Text dimColor>{`$${l.usd.toFixed(2)}`}</Text>}
-        <Button key="ukryj" label="Ukryj" onPress={() => update($, ukryty, () => true)} />
+      <Box flexDirection="column">
+        <Box gap={1}>
+          <Text color={kolor}>{pasek}</Text>
+          <Text bold={o.tokens >= o.warn}>{liczby}</Text>
+          {szerokie && <Text dimColor>{progi}</Text>}
+          {maLimity && <Text color={kolorLimitow(l)}>{`5h ${procent(l.p5h)} · 7d ${procent(l.p7d)}`}</Text>}
+          {szerokie && l?.usd != null && <Text dimColor>{`$${l.usd.toFixed(2)}`}</Text>}
+          <Button key="ukryj" label="Ukryj" onPress={() => update($, ukryty, () => true)} />
+        </Box>
+        {nizej}
       </Box>
     )
-  })
+  }).catch(($, e, next) => next(e))
 }
